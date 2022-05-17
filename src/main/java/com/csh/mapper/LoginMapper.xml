@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.LoginMapper">
+
+   <!-- public Login selectLogin(String lno);//登录时进行验证-->
+    <select id="selectLogin" parameterType="String" resultType="Login">
+        select * from esjy.login where lno=#{lno}
+    </select>
+
+    <!--添加登陆表信息-->
+    <insert id="insertLogin" parameterType="Login">
+        insert into esjy.login(rolecode, lno, lpassword) VALUE(#{rolecode}, #{lno}, #{lpassword})
+    </insert>
+
+    <!--根据lno删除登录表信息-->
+    <delete id="deleteByLno" parameterType="String">
+        delete from esjy.login where lno=#{lno}
+    </delete>
+
+    <update id="updateLoginByUser" parameterType="User">
+        update esjy.login set lpassword = #{upassword} where lno = #{uno}
+    </update>
+
+</mapper>

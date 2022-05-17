@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.ProductMapper">
+
+    <!--选择倒叙count个数据，并且不在订单表中-->
+    <select id="selectDescProducts" resultType="Product">
+        select * from esjy.product where pno not in (select pno from esjy.orders) order by esjy.product.pno desc limit #{start},#{end};
+    </select>
+
+    <!--选出最大的pno-->
+    <select id="selectMaxPno" resultType="String">
+        select MAX(pno) from esjy.product where pno
+    </select>
+
+    <!--插入新的商品-->
+    <insert id="insertProduct" parameterType="Product">
+        insert into esjy.product(pno, pname, price, ptype, plevel, uno, ppricture)
+        VALUE (#{product.pno},#{product.pname},#{product.price},#{product.ptype},#{product.plevel},#{product.uno},#{product.ppricture})
+    </insert>
+
+    <!--根据Pno查询商品-->
+    <select id="selectProductByPno" resultType="Product">
+        select * from esjy.product where pno = #{pno}
+    </select>
+
+    <!--根据Pno修改商品-->
+    <update id="updateProductByPno" parameterType="Product">
+        update esjy.product
+        <set>
+            <if test="product.pname != null">
+                pname = #{product.pname}
+            </if>
+            <if test="product.price != null">
+                ,price = #{product.price}
+            </if>
+            <if test="product.ptype != null">
+                ,ptype = #{product.ptype}
+            </if>
+            <if test="product.plevel != null">
+                ,plevel = #{product.plevel}
+            </if>
+            <if test="product.ppricture != null">
+                ,ppricture = #{product.ppricture}
+            </if>
+        </set>
+        where pno = #{product.pno}
+    </update>
+
+    <!--根据用户编号查询他发布的所有商品-->
+    <select id="selectProductsByUno" resultType="Product">
+        select p.*,o.bno,u.uname
+        from (esjy.product as p
+        left join esjy.orders as o on p.pno = o.pno)
+        left join esjy.user as u
+        on u.uno = o.bno
+        where p.uno = #{uno}
+    </select>
+
+    <!--根据商品编号pno删除商品-->
+    <delete id="deleteProductByPno">
+        delete from esjy.product where pno = #{pno}
+    </delete>
+
+    <!--其他用户查看某uno下的所有未卖出商品，每次查end-start个数据-->
+    <select id="selectProductsByOtherUno" resultType="Product">
+        select * from esjy.product where uno = #{otherUno} and pno not in (select pno from esjy.orders) order by esjy.product.pno desc limit #{start},#{end};
+    </select>
+
+    <!--根据keyWord模糊查询商品-->
+    <select id="selectProductsByKeyWord" resultType="Product">
+        select * from esjy.product
+        where (pname like concat('%','${keyWord}','%')
+        or ptype like concat('%','${keyWord}','%'))
+        and pno not in (select pno from esjy.orders)
+        order by esjy.product.pno desc
+        limit #{start},#{end};
+    </select>
+
+    <!--根据uno、pno，查询是否是该uno用户发布的商品pno-->
+    <select id="selectUnoProductByPno" resultType="Product">
+        select * from esjy.product where uno = #{uno} and pno = #{pno};
+    </select>
+
+</mapper>

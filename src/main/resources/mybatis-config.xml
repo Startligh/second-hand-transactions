@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+    <typeAliases>
+        <package name="com.csh.pojo"/>
+    </typeAliases>
+    <mappers>
+        <!--添加mapper文件，每一个mapper文件都需要加入-->
+        <mapper resource="com/csh/mapper/AdminMapper.xml"/>
+        <mapper resource="com/csh/mapper/LoginMapper.xml"/>
+        <mapper resource="com/csh/mapper/UserMapper.xml"/>
+        <mapper resource="com/csh/mapper/ShowPicMapper.xml"/>
+        <mapper resource="com/csh/mapper/ProductMapper.xml"/>
+        <mapper resource="com/csh/mapper/ShopcarMapper.xml"/>
+        <mapper resource="com/csh/mapper/OrdersMapper.xml"/>
+        <mapper resource="com/csh/mapper/DynamicMapper.xml"/>
+    </mappers>
+
+</configuration>

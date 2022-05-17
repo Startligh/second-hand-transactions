@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.UserMapper">
+
+    <select id="selectUserByUno" resultType="User">
+        select * from esjy.user where #{uno} = uno
+    </select>
+
+    <insert id="insertUser">
+        insert into esjy.user(uno,upassword,utype,upricture) value(#{uno},#{upassword},#{utype},'noHeadPhoto.png')
+    </insert>
+
+    <!--public void updateUserbyuno(User user);//修改除密码外的信息-->
+    <update id="updateUserbyuno" parameterType="User">
+        update esjy.user
+        set uname=#{uname},usex=#{usex},utel=#{utel},uaddress=#{uaddress},ubalance=#{ubalance}
+        <if test="upricture != null">
+            ,upricture=#{upricture}
+        </if>
+        where uno=#{uno}
+    </update>
+
+    <!--public void updateUpassword(User user);//修改密码-->
+    <update id="updateUpassword" parameterType="User">
+        update esjy.user set upassword=#{upassword} where uno=#{uno}
+    </update>
+
+    <!--public List<Product> selectProduct();//查询所有商品-->
+    <select id="selectProduct" resultType="Product">
+        select * from esjy.product
+    </select>
+    
+   <!-- public Product selectProductbypno(String pno);//根据商品编号查询-->
+    <select id="selectProductbypno" parameterType="String" resultType="Product">
+        select * from esjy.product where pno=#{pno}
+    </select>
+
+    <!--public List<Product> selectProductbypname(String pname);//根据商品名称模糊查询-->
+    <select id="selectProductbypname" parameterType="String" resultType="Product">
+        <bind name="pname" value="'%'+pname+'%'" />
+        select * from esjy.product
+        <where>
+            <if test="pname!=null and pname!=''">
+                and pname like #{pname}
+            </if>
+        </where>
+    </select>
+
+    <!--public List<Product> selectProductByUno(String uno);//显示我的商品-->
+    <select id="selectProductByUno" parameterType="String" resultType="Product">
+        select * from esjy.product where uno=#{uno}
+    </select>
+
+    <!--public void updatemyPoduct(Product product);//修改我发布的商品，只能在“我的商品”页面操作-->
+    <update id="updatemyPoduct" parameterType="Product">
+        update esjy.product
+        set pname=#{pname},price=#{price},ptype=#{ptype},plevel=#{plevel},ppricture=#{ppricture}
+        where pno=#{pno}
+    </update>
+
+    <!--public void deletemyProduct(String pno);//删除我发布的商品，只能在“我的商品”页面操作-->
+    <delete id="deletemyProduct" parameterType="String">
+        delete from esjy.product where pno=#{pno}
+    </delete>
+
+    <!--public void addProduct(Product product);//发布商品-->
+    <insert id="addProduct" parameterType="Product">
+        insert into esjy.product values(#{pno},#{pname},#{price},#{ptype},#{plevel},#{uno},#{ppricture})
+    </insert>
+
+    <!--public List<Shopcar> selectShopcar(String uno);//显示购物车的内容-->
+    <select id="selectShopcar" parameterType="String" resultType="Shopcar">
+        select * from esjy.shopcar
+    </select>
+
+    <!--public void deleteProductfromshopcar(String pno);//根据商品编号从购物车中删除-->
+    <delete id="deleteProductfromshopcar" parameterType="String">
+        delete from esjy.shopcar where pno=#{pno}
+    </delete>
+
+    <!--public void addProducttoshopcar(Shopcar shopcar);//增加商品到购物车-->
+    <insert id="addProducttoshopcar" parameterType="Shopcar">
+        insert into esjy.shopcar values(#{scno},#{uno},#{pno},#{sno})
+    </insert>
+
+    <!--public List<Orders> selectOrders(String uno);//查看我的订单（根据我的id到订单表查找）-->
+    <select id="selectOrders" parameterType="String" resultType="Orders">
+        select * from esjy.orders where sno=#{uno} or bno=#{uno}
+    </select>
+
+    <!--public List<Orders> selectBuyOrders(String uno);//用where bno=uno子句查询我的购买订单-->
+    <select id="selectBuyOrders" parameterType="String" resultType="Orders">
+        select * from esjy.orders where bno=#{uno}
+    </select>
+
+    <!--public List<Orders> selectSaleOrders(String uno);//用where sno=uno子句查询我的销售订单-->
+    <select id="selectSaleOrders" parameterType="String" resultType="Orders">
+        select * from esjy.orders where sno=#{uno}
+    </select>
+
+    <!--public void addOrders(Orders orders);//增加订单-->
+    <insert id="addOrders" parameterType="Orders">
+        insert into esjy.orders values(#{ono},#{pno},#{bno},#{sno},#{odate})
+    </insert>
+
+    <!--public List<Dynamic> selectDynamic(String uno);//根据id查看动态-->
+    <select id="selectDynamic" parameterType="String" resultType="Dynamic">
+        select * from esjy.dynamic where uno=#{uno}
+    </select>
+
+    <!--public void addDynamic(Dynamic dynamic);//增加动态-->
+    <insert id="addDynamic" parameterType="Dynamic">
+        insert into esjy.dynamic values(#{uno},#{pno},#{dtype},#{trade})
+    </insert>
+
+    <!--public void deleteDynamic(String pno);//删除动态（例如退货时）-->
+    <delete id="deleteDynamic" parameterType="String">
+        delete from esjy.dynamic where pno=#{pno}
+    </delete>
+
+</mapper>

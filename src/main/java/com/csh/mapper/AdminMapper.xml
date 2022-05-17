@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.AdminMapper">
+
+    <!--selectAllAdmins-->
+    <select id="selectAllAdmins" resultType="Admin">
+        select * from esjy.admin
+    </select>
+
+    <!--根据管理员编号查询管理员信息-->
+    <select id="selectAdminByAno" resultType="Admin">
+        select * from esjy.admin where #{ano} = ano
+    </select>
+
+    <!--添加新管理员-->
+    <insert id="addAdmin" parameterType="Admin">
+        insert into esjy.admin values(#{ano},#{apassword},#{aname},#{asex},#{apricture})
+    </insert>
+
+    <!--设置用户类型-->
+    <update id="updateblacklist" parameterType="User">
+        update esjy.user set utype=#{utype} where uno=#{uno};
+    </update>
+
+    <!--更新管理员信息-->
+    <update id="updateAdmin" parameterType="Admin">
+        update esjy.admin set aname=#{aname},asex=#{asex},apricture=#{apricture} where ano=#{ano};
+    </update>
+
+    <!--查询所有用户-->
+    <select id="selectallUser" resultType="User">
+        select * from esjy.user
+    </select>
+
+    <!--deleteAdminByAno-->
+    <delete id="deleteAdminByAno" parameterType="String">
+        delete from esjy.admin where ano=#{ano}
+    </delete>
+
+    <!--查询白名单用户-->
+    <select id="selectWhiteUser" resultType="User">
+        select * from esjy.user where 'white' = utype
+    </select>
+
+    <!--查询所有的黑名单用户-->
+    <select id="selectBlackUser" resultType="User">
+        select * from esjy.user where 'black' = utype
+    </select>
+
+    <!--根据信息查询目的黑名单用户-->
+    <select id="selectBlackUserByMsg" parameterType="User" resultType="User">
+        select * from esjy.user where 'black' = utype
+        <if test="user.uno != null">
+            or uno like concat('%',#{user.uno},'%')
+        </if>
+        <if test="user.uname != null">
+            or uname like concat('%', #{user.uname},'%')
+        </if>
+    </select>
+</mapper>

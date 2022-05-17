@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.ShowPicMapper">
+
+    <!--得到关于key的图片列表：(key=show, top, null)-->
+    <select id="selectShowPic" resultType="ShowPic">
+        select * from esjy.showpic
+        <where>
+            <if test="key == 'show'">
+                and picShow = #{key}
+            </if>
+            <if test="key == 'top'">
+                and picTop = #{key} and picShow = 'show'
+            </if>
+        </where>
+    </select>
+
+    <!--插入新的展示图，只能添加图片名称-->
+    <insert id="insertShowPic" parameterType="ShowPic">
+        insert into esjy.showpic(picName) VALUE (#{showPic.picName})
+    </insert>
+
+    <!--改变图片的三个状态：show、top、link-->
+    <update id="updatePicShow" parameterType="ShowPic">
+        update esjy.showpic
+        <set>
+            <if test="showPic.picShow != null">
+                picShow = #{showPic.picShow}
+            </if>
+            <if test="showPic.picTop != null">
+                ,picTop = #{showPic.picTop}
+            </if>
+            <if test="showPic.picLink != null">
+                ,picLink = #{showPic.picLink}
+            </if>
+        </set>
+        where picId = #{showPic.picId}
+    </update>
+
+    <!--根据轮播图编号删除该轮播图-->
+    <delete id="deleteShowPic">
+        delete from esjy.showpic where picId = #{picId}
+    </delete>
+
+</mapper>

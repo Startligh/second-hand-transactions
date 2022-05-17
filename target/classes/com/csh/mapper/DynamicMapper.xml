@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.DynamicMapper">
+
+    <!--查询uno下新的未读新动态的数量-->
+    <select id="selectCountOfNewDynamicByUno" parameterType="String" resultType="Integer">
+        select count(1)
+        from esjy.dynamic as d, esjy.product as p
+        where d.pno = p.pno and p.uno = #{uno} and d.readed = 0;
+    </select>
+
+    <!--查询uno下的所有商品的动态-->
+    <select id="selectDynamicsByUno" resultType="Dynamic">
+        select d.*, u.uname
+        from esjy.dynamic as d, esjy.user as u
+        where d.pno in (select p.pno from esjy.product as p where p.uno = #{uno}) and d.uno = u.uno
+        order by d.dno desc;
+    </select>
+
+    <!--插入一条新动态-->
+    <insert id="insertDynamic">
+        insert into esjy.dynamic(uno, pno, dtype) VALUE (#{dynamic.uno}, #{dynamic.pno}, #{dynamic.dtype});
+    </insert>
+
+    <!--更新uno下商品的所有阅读状态-->
+    <update id="updateDynamicReaded">
+        update esjy.dynamic set readed = 1 where pno in (select p.pno from esjy.product as p where p.uno = #{uno});
+    </update>
+
+</mapper>

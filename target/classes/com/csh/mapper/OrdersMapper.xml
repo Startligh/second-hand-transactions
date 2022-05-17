@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.OrdersMapper">
+
+    <!--结果集-->
+    <resultMap id="getOrders" type="Orders">
+        <result property="ono" column="ono"></result>
+        <result property="pno" column="pno"></result>
+        <result property="bno" column="bno"></result>
+        <result property="sno" column="sno"></result>
+        <result property="odate" column="odate"></result>
+        <result property="stats" column="stats"></result>
+        <result property="bname" column="bname"></result>
+        <result property="sname" column="sname"></result>
+    </resultMap>
+    
+    <!--根据pno查询订单-->
+    <select id="selectOrdersByPno" resultType="Orders">
+        select * from esjy.orders where pno = #{pno};
+    </select>
+
+    <!--查询最大的订单号-->
+    <select id="selectMaxOno" resultType="Integer">
+        select MAX(ono) from esjy.orders;
+    </select>
+
+    <!--根据ono查询订单，但是用户必须是买家或卖家的身份-->
+    <select id="selectOrderByOnoWithSave" resultType="Orders">
+        select * from esjy.orders where ono = #{ono} and (sno = #{uno} or bno = #{uno});
+    </select>
+
+    <!--根据uno查询所有相关订单-->
+    <select id="selectOrdersByUno" resultMap="getOrders">
+        select o.*,
+       (select uname from esjy.user where uno = o.bno) as bname,
+       (select uname from esjy.user where uno = o.sno) as sname
+        from esjy.orders as o
+        where o.bno = #{uno} or o.sno = #{uno}
+        order by o.ono desc;
+    </select>
+
+    <!--根据bno查询所有相关订单-->
+    <select id="selectOrdersByBno" resultMap="getOrders">
+        select o.*,
+       (select uname from esjy.user where uno = o.bno) as bname,
+       (select uname from esjy.user where uno = o.sno) as sname
+        from esjy.orders as o
+        where o.bno = #{bno}
+        order by o.ono desc;
+</select>
+
+
+    <!--根据sno查询所有相关订单-->
+    <select id="selectOrdersBySno" resultMap="getOrders">
+        select o.*,
+       (select uname from esjy.user where uno = o.bno) as bname,
+       (select uname from esjy.user where uno = o.sno) as sname
+        from esjy.orders as o
+        where o.sno = #{sno}
+        order by o.ono desc;
+    </select>
+
+    <!--插入新订单-->
+    <insert id="insertOrder">
+        insert into esjy.orders(ono, pno, bno, sno, odate) VALUE (#{orders.ono},#{orders.pno},#{orders.bno},#{orders.sno},#{orders.odate})
+    </insert>
+
+    <!--更新订单状态-->
+    <update id="updateOrdersStats">
+        update esjy.orders set orders.stats = #{stats} where orders.ono = #{ono};
+    </update>
+
+    <!--根据订单编号查询订单信息-->
+    <select id="selectOrderByOno" resultType="Orders">
+        select * from esjy.orders where ono = #{ono};
+    </select>
+
+</mapper>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.ShopcarMapper">
+
+    <!--根据商品pno以及uno，查询该用户购物车中有无记录pno商品-->
+    <select id="selectUnoCarByPno" resultType="Shopcar">
+        select * from esjy.shopcar where uno = #{uno} and pno = #{pno};
+    </select>
+
+    <!--增加一个购物车信息-->
+    <insert id="insertShopcar" parameterType="String">
+        insert into esjy.shopcar(uno, pno, sno) VALUE (#{uno},#{pno},#{sno});
+    </insert>
+
+    <!--根据商品编号pno、用户编号uno 删除一个购物车信息-->
+    <delete id="deleteUnoShopcarByPno" parameterType="String">
+        delete from esjy.shopcar where uno = #{uno} and pno = #{pno};
+    </delete>
+
+    <!--根据uno查询该用户的购物车中所有信息-->
+    <select id="selectShopcarsByUno" resultType="Shopcar">
+        select s.*, u.uname, p.pname, p.price, p.ppricture
+        from esjy.shopcar as s, esjy.product as p, esjy.user as u
+        where s.uno = #{uno} and s.pno = p.pno and p.uno = u.uno;
+    </select>
+
+</mapper>
