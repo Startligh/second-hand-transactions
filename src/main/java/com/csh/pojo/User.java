@@ -12,6 +12,13 @@ public class User {
     private String upricture;
     private String utype;
 
+    public User() {
+    }
+
+    public User(String uno) {
+        this.uno = uno;
+    }
+
     public String getUtype() {
         return utype;
     }

@@ -235,6 +235,7 @@
     float: right;
     cursor: pointer;
     display: inline-block;
+    text-align:center;
 }
 .ft_content{
     display: block;
@@ -614,7 +615,7 @@
     display: none;
 }
 .wechat_reddot{
-    /*background: url('../Photo/red_02_02.png');*/
+    background: url('../Photo/red_02_02.png');
     width: 12px;
     height: 10px;
     vertical-align: middle;
@@ -622,7 +623,7 @@
     display: none;
 }
 .reddot{
-    /*background: url('../Photo/red_02_02.png');*/
+    background: url('../Photo/red_02_02.png');
     width: 12px;
     height: 10px;
     position: absolute;

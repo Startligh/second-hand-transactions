@@ -8,4 +8,7 @@
     <import resource="spring-service.xml"/>
     <import resource="spring-mvc.xml"/>
 
+    <!--注册获得Spring上下文的bean-->
+    <bean id="SpringCtxUtils" class="com.csh.util.SpringCtxUtils" lazy-init="false"/>
+
 </beans>

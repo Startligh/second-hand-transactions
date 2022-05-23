@@ -6,6 +6,7 @@
 <div  class="layui-container" style="padding: 75px">
     <div class="Main">
         <div id="Mainchat">
+            <!-- 联系人界面 -->
             <div class="slidebar">
                 <div class="slide-tag">
                     <div class="chat-view">
@@ -17,7 +18,7 @@
                     </div>
                 </div>
                 <div class="slide-online">
-                    <div class="slide_one"></div>
+                    <div class="slide_one"><div id="topOfSlide"></div></div>
                 </div>
                 <div class="chating">
                     <div class="chating_one">
@@ -41,7 +42,7 @@
                 <div class="box_ft">
                     <div class="ft_toolbar">
                         <a href="#" class="face"></a>
-                        <div class="checkchat"><span>聊天记录</span></div>
+                        <div class="checkchat" onclick="getMoreChatLog()"><span>点击获得更多聊天记录</span></div>
                     </div>
                     <div class="ft_content">
                         <div class="conten_area">
@@ -80,7 +81,7 @@
                 <div class="history_main">
                 </div>
             </div>
-            <!-- 联系人界面 -->
+            <%--消息中心初始化--%>
             <div class="menber-orign">
                 <div class="orign-header">
                     <div class="title-wrap">
@@ -103,7 +104,7 @@
 <script src="${pageContext.request.contextPath}/js/jquery-1.8.3.min.js"></script>
 <script src="${pageContext.request.contextPath}/layui/layui.js"></script>
 <script type="text/javascript">
-    //创建websocket对象
+    /**************创建websocket对象************************/
     var websocket;
     var connFlag = false;
     window.onload = myOnload();
@@ -111,11 +112,14 @@
         getSocket();
         //加载聊天对象
         $(".slide-online").show();//打开联系人列表
-        if(sessionStorage.getItem("chatWith") != null) {
-            addChatUserAndChat();
+        var chatToAhead = sessionStorage.getItem("chatWith");
+        if(chatToAhead != null) {
+            //进入消息中心前，预选定了聊天对象则：在联系人列表中添加该用户，选中该聊天，打开聊天框
+            // （因为函数同一时间执行故元素在函数执行完才实际添加到页面，此时无法通过函数操作不存在的元素）
+            chatToAheadUser(sessionStorage.getItem("chatWith"));
+            sessionStorage.removeItem("chatWith");
         }
-        //加载聊天历史列表，假如历史列表存在选定聊天对象（删去）
-
+        showChatUserList(chatToAhead);//加载联系人列表
     }
     function getSocket() {
         if('WebSocket' in window) {
@@ -134,19 +138,35 @@
             console.log("连接服务器成功!")
         };
         websocket.onmessage = function(evnt) {
-            console.log(evnt.data);
-            //返回data格式："sendFrom:xxx;content:xxx"
-            var str = evnt.data.split(';');
-            var sendFrom = str[0].split(':')[1];
-            var content = str[1].split(':')[1];
-            if(sendFrom == sessionStorage.getItem("chatting-userNo")) {
-                var userPic = document.getElementById("photo_" + sendFrom);
-                //当前对话框用户发来消息
-                addOtherSayToBox(content, sendFrom, userPic.alt);
+            console.log(evnt.data);//evnt.data: "{\"sendFrom\":\"xx\",\"content\":\"xx\"}"
+            var data = JSON.parse(evnt.data);
+            if(data.sendFrom == ${userNo}) {
+                //自己发送回传
+                if(data.status == 200) {
+                    console.log("发送成功");
+                }
+                setChatLogStart(sessionStorage.getItem("chatting-userNo"), 1);
+            } else if(data.sendFrom == sessionStorage.getItem("chatting-userNo")) {
+                //当前对话框的用户发来消息
+                addOtherSayToBox(data.content, data.sendFrom, data.sendTime, false);//将消息添加至聊天框
+            } else  {//不是当前对话框的用户发来的消息
+                if(document.getElementById(data.sendFrom) == null) {//联系人列表中还没有该用户
+                    addToChatListByUserNo(data.sendFrom);//添加至联系人列表
+                }
+                if(document.getElementById(data.sendFrom + "_content") == null) {//该会话的会话框还没创建
+                    addChatBox(data.sendFrom);//创建会话框填充消息
+                    $("#" + data.sendFrom + "_content").hide();//隐藏聊天框
+                }
+                if(data.sendFrom != sessionStorage.getItem("chatting-userNo")) {//当前会话没被选择
+                    $("#newMsg_" + data.sendFrom).show();//消息提示红点的打开
+                }
+                addOtherSayToBox(data.content, data.sendFrom, data.sendTime, false);//将消息添加至聊天框
+                setChatLogStart(data.sendFrom, 1);
+                //聊天内容区滑到最下面
+                var chatting_content_box = '#'+ data.sendFrom + "_content_box";
+                $(chatting_content_box).scrollTop( $(chatting_content_box)[0].scrollHeight );
             }
-/*            else if() {
-                //在当前的联系人列表，使用缓存的json判断（页面加载时获得数据库中的联系人列表，缓存）
-            }*/
+            topChatUser(data.sendFrom);//置顶新发送消息的用户
         };
         websocket.onerror = function(evnt) {
             connFlag = false;
@@ -160,11 +180,14 @@
             send();
         });*/
     }
-    //发送消息给服务端
+    /**************发送消息给服务端************************/
     function send(content) {
         if(websocket != null) {
             console.log("内容：" + content);
-            var message = "chatToUser:" + sessionStorage.getItem("chatting-userNo") + ";content:" + content;
+            //置顶该联系人
+            topChatUser(sessionStorage.getItem("chatting-userNo"));
+            //从JS对象转换为JSON字符串
+            var message = JSON.stringify({chatToUserNo: sessionStorage.getItem("chatting-userNo"), content: content});
             websocket.send(message);
             return true;
         } else {
@@ -174,7 +197,7 @@
     }
 
     document.getElementById("outLogin").onclick = outLogin();
-    function outLogin() {
+    function outLogin() {//退出登录前检查是否有socket连接
         if(!connFlag && websocket != null) {
             connFlag = false;
             websocket.close();
@@ -184,6 +207,8 @@
 
     window.onbeforeunload = function () {
         console.log("页面关闭");
+        setChatLogHadRead(sessionStorage.getItem("chatting-userNo"));//发送将消息修改为已读的请求
+        sessionStorage.removeItem("chatting-userNo");
         if(!connFlag && websocket != null) {
             connFlag = false;
             websocket.close();
@@ -191,17 +216,36 @@
         }
     };
 
-    //选择聊天用户进入消息中心————打开聊天区域、将其添加入联系人列表
-    function addChatUserAndChat() {
-        var chatWithUno = sessionStorage.getItem("chatWith");
-        sessionStorage.removeItem("chatWith");
-        addChatUser(chatWithUno);
-        //chooseToChat(chatWithUno);
-        //将该用户添加入联系人列表(数据库)
-
+    /**************展示当前用户的聊天列表************************/
+    function showChatUserList(chatToAhead) {
+        $.ajax({
+            url : "${pageContext.request.contextPath}/getChatList",
+            method:'post',
+            contentType:'application/json',
+            dataType:"json",
+            success : function(result) {
+                var chatList = result.chatList;
+                for(var i = 0; i < chatList.length; i++){
+                    var chat = chatList[i];
+                    if(chat.userId != chatToAhead) {
+                        addToChatList(chat.userId, chat.userName, chat.userPhoto);
+                        if(chat.unReadCount > 0) {
+                            $("#newMsg_" + chat.userId).show();//消息提示红点的打开
+                        }
+                    }
+                }
+            }
+        });
     }
-
-    function addChatUser(userNo) {
+    /**************给定具体对话人数据，添加至联系人列表************************/
+    function addToChatList(userNo, userName, userHP) {
+        var friendDiv  = "<div class='menber' id="+ userNo +" onclick=chooseToChat(this)>"+"<div class='men-pirture'>" + "<span id='photo_" + userName + "' class='m-pirture'>"+'</span>'+ "<span class='icon wechat_reddot' id = newMsg_" + userNo +">" + "</div>"+"<div class='chat-item'>"+"<h3 class='s-nickname'>"+"<span class='s-nick-text' id='" + userNo + "_userName'>"+ userName +"</span>"+"</h3>"+"</div>"+"</div>";
+        $(".slide_one").append(friendDiv);
+        var friendHP = "<img id=\"photo_" + userNo + "\" src=\"${pageContext.request.contextPath}/img/headPhoto/" + userHP + "\" class=\"chat-user-photo\" alt=\"" + userHP + "\">";
+        $("#photo_" + userName).append(friendHP);
+    }
+    /**************给定具体对话人id，添加至联系人列表************************/
+    function addToChatListByUserNo(userNo) {
         $.ajax({
             //得到用户头像、昵称
             url : "${pageContext.request.contextPath}/getUserHP",
@@ -212,7 +256,25 @@
             success : function(result) {
                 if(result.code == 200) {
                     //成功：说明存在该用户，添加进入联系人框
-                    var friendDiv  = "<div class='menber' id="+ userNo +" onclick=chooseToChat(this)>"+"<div class='men-pirture'>"+"<span id='photo_" + result.userName + "' class='m-pirture'>"+'</span>'+"</div>"+"<div class='chat-item'>"+"<h3 class='s-nickname'>"+"<span class='s-nick-text' id='" + userNo + "_userName'>"+ result.userName +"</span>"+"</h3>"+"</div>"+"</div>";
+                    addToChatList(userNo, result.userName, result.userHP);
+                }
+            }
+        })
+    }
+
+    /**************和提前选定的联系人聊天************************/
+    function chatToAheadUser(userNo) {
+        $.ajax({
+            //得到用户头像、昵称
+            url : "${pageContext.request.contextPath}/getUserHP",
+            data:{uno:userNo},
+            method:'post',
+            contentType:'application/json',
+            dataType:"json",
+            success : function(result) {
+                if(result.code == 200) {
+                    //成功：说明存在该用户，添加进入联系人框
+                    var friendDiv  = "<div class='menber' id="+ userNo +" onclick=chooseToChat(this)>"+"<div class='men-pirture'>"+"<span id='photo_" + result.userName + "' class='m-pirture'>"+'</span>' + "<span class='icon wechat_reddot' id = newMsg_" + userNo +">" + "</div>"+"<div class='chat-item'>"+"<h3 class='s-nickname'>"+"<span class='s-nick-text' id='" + userNo + "_userName'>"+ result.userName +"</span>"+"</h3>"+"</div>"+"</div>";
                     $(".slide_one").append(friendDiv);
                     var friendHP = "<img id=\"photo_" + userNo + "\" src=\"${pageContext.request.contextPath}/img/headPhoto/" + result.userHP + "\" class=\"chat-user-photo\" alt=\"" + result.userHP + "\">";
                     $("#photo_"+result.userName).append(friendHP);
@@ -223,46 +285,133 @@
         })
     }
 
-    //从联系人列表选择聊天
+    /**************从联系人列表中选择聊天************************/
     function chooseToChat(e) {
         chooseChat(e.id);
+        $("#send-frame").val('');
         document.getElementById(e.id).style.background = "#3A3F45";
     }
 
-    //选择聊天用户
+    /**************选择聊天用户************************/
     function chooseChat(userNo) {
+        if(document.getElementById("newMsg_" + userNo).style.display == 'inline') {
+            $("#newMsg_" + userNo).hide();//消息提示红点的关闭
+            setChatLogHadRead(userNo);//发送将消息修改为已读的请求
+        }
         console.log("chooseChat:" + userNo);
         $("#chatArea").show();
         var chattingUser = sessionStorage.getItem("chatting-userNo");
         if(chattingUser != null) {
             //早已选择了聊天对象
             if(chattingUser != userNo) {
-                //更改聊天对象，当前聊天内容区隐藏
-                if($(chattingUser) != null) {
+                //更改聊天对象，当前聊天内容区隐藏，同时将会话记录改为已读
+                setChatLogHadRead(chattingUser);//发送将消息修改为已读的请求
+                if($("#" + chattingUser) != null) {
                     document.getElementById(chattingUser).style.background = "#2e3238";
+                    $("#" + chattingUser + "_content").hide();
                 }
-                $("#" + chattingUser + "_content").hide();
                 //选择新的聊天对象
                 sessionStorage.setItem("chatting-userNo", userNo);
                 //加入新聊天内容区
-                $("#chatWithName").text($("#" + userNo + "_userName").val());
-                if($("#" + userNo + "_content") !=  null) {
-                    //所选聊天取已存在
+                $("#chatWithName").text($("#" + userNo + "_userName").text());
+                if(document.getElementById(userNo + "_content") != null) {
+                    //所选聊天区已存在
                     $("#" + userNo + "_content").show();
                 } else {
-                    //追加聊天内容区
-                    var chat_content = "<div class='box_mainwrap'"+"id="+userNo+'_content'+">"+"<div class='box_main'"+ "id=" + userNo + '_content_box'+">"+"</div>"+"</div>";
-                    $(".chat_content").append(chat_content);
+                    //不然，追加聊天内容区
+                    addChatBox(userNo, true);
                 }
             }
         } else {
             //第一次选择聊天对象
             sessionStorage.setItem("chatting-userNo", userNo);
-            $("#chatWithName").text($("#" + userNo + "_userName").val());
+            $("#chatWithName").text($("#" + userNo + "_userName").text());
             //追加聊天内容区
-            var chat_content = "<div class='box_mainwrap'"+"id="+userNo+'_content'+">"+"<div class='box_main'"+ "id=" + userNo + '_content_box'+">"+"</div>"+"</div>";
-            $(".chat_content").append(chat_content);
+            addChatBox(userNo, true);
         }
+        $("#send-frame").focus();
+    }
+
+    /*****************添加聊天框*********************/
+    function addChatBox(userNo, chatLogFlag) {
+        var chat_content = "<div class='box_mainwrap'"+"id="+userNo+'_content'+">"+"<div class='box_main'"+ "id=" + userNo + '_content_box'+">" + "<div id=" + userNo + '_content_box_top' + " style=\"display: none;\">0</div>" + "</div>"+"</div>";
+        $(".chat_content").append(chat_content);
+        if(chatLogFlag == true) {
+            getChatLog(userNo);//加载聊天历史记录
+            var chatting_content_box = '#'+ userNo + "_content_box";
+            setTimeout(function() {
+                $(chatting_content_box).scrollTop( $(chatting_content_box)[0].scrollHeight );
+            }, 100);
+        }
+    }
+
+    /****************置顶某联系人**********************/
+    function topChatUser(chatToUserNo) {
+        var topOfSlide = $("#topOfSlide");
+        var userSlide = $("#" + chatToUserNo);
+        topOfSlide.after(userSlide);
+    }
+
+    /**************将登录用户与会话用户的聊天记录设为已读************************/
+    function setChatLogHadRead(userNo) {
+        $.ajax({
+            url : "${pageContext.request.contextPath}/readChatLog",
+            data:{chatTo:userNo},
+            method:'post',
+            contentType:'application/json',
+            dataType:"json",
+            success : function(result) {
+                if(result.status == 200) {
+                    console.log("已读用户：" + userNo + "发送的消息");
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        });
+    }
+
+    /**************设置历史记录的查询起始位置************************/
+    function setChatLogStart(userNo, addValue) {
+        console.log(typeof (addValue));
+        var boxTop = "#" + userNo + "_content_box_top";
+        var start = ($(boxTop).text());
+        console.log((Number($(boxTop).text()) + Number(addValue)));
+        $(boxTop).text((Number($(boxTop).text()) + Number(addValue)));
+    }
+
+    /**************点击加载历史记录************************/
+    function getMoreChatLog() {
+        getChatLog(sessionStorage.getItem("chatting-userNo"));
+    }
+    function getChatLog(chattingUser) {
+        var start = $("#" + chattingUser + "_content_box_top").text();
+        $.ajax({
+            url : "${pageContext.request.contextPath}/getChatLogPage",
+            data:{chatTo:chattingUser,start:start},
+            method:'post',
+            contentType:'application/json',
+            dataType:"json",
+            success : function(result) {
+                console.log(result.chatLog);
+                if(result.status == 200) {
+                    console.log("得到与用户：" + chattingUser + "的聊天记录" + result.chatLog.length + "条");
+                    var list = result.chatLog;
+                    for(var i = 0; i < list.length; i++) {
+                        var data = list[i];
+                        if(data.sendUserId == chattingUser) {//发送用户是聊天对方
+                            addOtherSayToBox(data.content, data.sendUserId, data.sendTime, true);
+                        } else {//发送方是自己
+                            addMySayToBox(data.content, true, data.sendTime);
+                        }
+                    }
+                    setChatLogStart(chattingUser, list.length);
+                    return true;
+                } else if(result.status == 500) {
+                    return false;
+                }
+            }
+        });
     }
 
     /**************聊天内容发送************************/
@@ -277,7 +426,7 @@
         if ($content.val() != "") {
             if(send($content.val())) {
                 $(".box_main").scrollTop($(".box_main").height());
-                addISayToBox($content.val());
+                addMySayToBox($content.val(), false);
             }
         }
         else{
@@ -287,13 +436,16 @@
         }
     });
 
-    //将自己发送内容填充至聊天区
-    function addISayToBox(content) {
+    /**************将自己发送内容填充至聊天区************************/
+    function addMySayToBox(content, logFlag, sendTime) {
+        if(logFlag == false) {
+            sendTime = currentTime();
+        }
         var Message = '<div class="other">'+
             '<div class="clearfix">'+
             '<div class="m-one">'+
             '<div class="other-body">'+
-            '<p class="m-time">'+'<span>' + currentTime() + '</span>'+'</p>'+
+            '<p class="m-time">'+'<span>' + sendTime + '</span>'+'</p>'+
             '<span class="other-avator">'+
             '<img src=\"${pageContext.request.contextPath}/img/headPhoto/${userPicture}\" class=\"chat-user-photo\">' +
             "</span>"+
@@ -310,19 +462,25 @@
             '</div>'+
             '</div>'+
             '</div>';
-        var chatting_content_box = '#'+ sessionStorage.getItem("chatting-userNo") + "_content_box";
-        $(chatting_content_box).append(Message);
+        if(logFlag) {
+            var chatting_content_box_top = '#' + sessionStorage.getItem("chatting-userNo") + '_content_box_top';
+            $(chatting_content_box_top).after(Message);
+        } else {
+            var chatting_content_box = '#'+ sessionStorage.getItem("chatting-userNo") + "_content_box";
+            $(chatting_content_box).append(Message);
+            $(chatting_content_box).scrollTop( $(chatting_content_box)[0].scrollHeight );
+        }
         $("#send-frame").val('');
-        $(chatting_content_box).scrollTop( $(chatting_content_box)[0].scrollHeight );
     }
 
-    //将接受到他人的消息填充至聊天区
-    function addOtherSayToBox(content, userNo, userPic) {
+    /**************将接受到他人的消息填充至聊天区************************/
+    function addOtherSayToBox(content, userNo, sendTime, logFlag) {
+        var userPic = document.getElementById("photo_" + userNo).alt;
         var Message = '<div class="other">'+
             '<div class="clearfix">'+
             '<div class="m-one">'+
             '<div class="msg-from-box">'+
-            '<p class="m-time">'+'<span>' + currentTime() + '</span>'+'</p>'+
+            '<p class="m-time">'+'<span>' + sendTime + '</span>'+'</p>'+
             '<span class="msg-from-photo">'+
             '<img src=\"${pageContext.request.contextPath}/img/headPhoto/' + userPic +  '\" class=\"chat-user-photo\">' +
             "</span>"+
@@ -339,10 +497,15 @@
             '</div>'+
             '</div>'+
             '</div>';
-        var chatting_content_box = '#'+ sessionStorage.getItem("chatting-userNo") + "_content_box";
-        $(chatting_content_box).append(Message);
+        if(logFlag) {
+            var chatting_content_box_top = '#' + sessionStorage.getItem("chatting-userNo") + '_content_box_top';
+            $(chatting_content_box_top).after(Message);
+        } else {
+            var chatting_content_box = '#' + userNo + "_content_box";
+            $(chatting_content_box).append(Message);
+            $(chatting_content_box).scrollTop($(chatting_content_box)[0].scrollHeight);
+        }
         $("#send-frame").val('');
-        $(chatting_content_box).scrollTop( $(chatting_content_box)[0].scrollHeight );
     }
 
     /************************过滤消息******************/
@@ -351,7 +514,7 @@
         str = str.replace(/<\/?(?!img\b)[a-z\d]+[^>]*>/ig, function ($0) { return $0.replace(/</g, '&lt;').replace(/>/g, '&gt;') });
         return str;
     }
-    //获取当前时间
+    /**************获取当前时间************************/
     function currentTime(){
         var str = '';
         var d = new Date();

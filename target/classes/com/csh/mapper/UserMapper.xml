@@ -4,7 +4,7 @@
 <mapper namespace="com.csh.mapper.UserMapper">
 
     <select id="selectUserByUno" resultType="User">
-        select * from esjy.user where #{uno} = uno
+        select * from esjy.user where uno = #{uno}
     </select>
 
     <insert id="insertUser">

@@ -1,6 +1,11 @@
 package com.csh.ws;
 
+import com.csh.resultPojo.ChatLogElement;
+import com.csh.service.WSMessageService;
 import com.csh.util.Constants;
+import com.csh.util.SpringCtxUtils;
+import com.csh.util.UserMethod;
+import org.json.JSONObject;
 
 import javax.servlet.http.HttpSession;
 import javax.websocket.*;
@@ -14,6 +19,8 @@ import java.util.Set;
 //多终端连接，连接url地址和配置项
 @ServerEndpoint(value = "/webSocketPoint", configurator = GetHttpSessionConfigurator.class)
 public class WebSocketPoint {
+
+    private WSMessageService wsMessageService;
 
     //静态变量（线程安全），连接总数
     private static int onlineCount = 0;
@@ -87,7 +94,10 @@ public class WebSocketPoint {
     /**
      * 收到消息的调用函数
      * @param session 连接webSocket的session对象
-     * @param message 收到的消息
+     * @param message 收到的前端消息的json对象的字符串
+     * @sendTo JSONObject对象
+     *              发给目标对象sendMessage {"sendFrom":"xx","content":"xx"}
+     *              发给消息源 resultMessage {"sendFrom":"xx","status":"200\500"}
      */
     @OnMessage
     public void onMessage(Session session, String message) {
@@ -97,19 +107,32 @@ public class WebSocketPoint {
             System.out.println("session为null");
         } else {
             try {
-                //message格式："chatToUser:xxx;content:xxx"
-                String[] split = message.split(";");
-                String chatToUserNo = split[0].split(":")[1];
-                String content = split[1].split(":")[1];
-                StringBuilder sb = new StringBuilder();
-                if(chatToUserNo != null) {
-                    sb.append("sendFrom:");
-                    sb.append(this.getUserNo());
-                    sb.append(";content:");
-                    sb.append(content);
-                    sendMessage(chatToUserNo, sb.toString());//发送给指定用户
+                if(this.wsMessageService == null) {
+                    this.wsMessageService = SpringCtxUtils.getBean(WSMessageService.class);
                 }
-                this.getSession().getBasicRemote().sendText(sb.toString());//发送语句
+                //获得message的json对象
+                JSONObject getMessage = new JSONObject(message);
+                String content = getMessage.getString("content");
+                String chatToUserNo = getMessage.getString("chatToUserNo");
+                //将消息插入数据库
+                ChatLogElement chatLogElement = new ChatLogElement(content, this.getUserNo(), chatToUserNo, wsMessageService.getChatId(this.getUserNo(), chatToUserNo));
+                wsMessageService.insertChatLog(chatLogElement);
+                //携带发送信息的json对象
+                JSONObject sendMessage = new JSONObject();
+                sendMessage.put("sendFrom", this.getUserNo());
+                sendMessage.put("content", content);
+                sendMessage.put("sendTime", UserMethod.getChattingNewTime());
+                //发送信息的结果的json对象
+                JSONObject sendResult = new JSONObject();
+                sendResult.put("sendFrom", this.getUserNo());
+                sendResult.put("status", 500);
+                if(chatToUserNo != null) {//发送给指定用户
+                    if(sendMessage(chatToUserNo, sendMessage.toString())) {
+                        sendResult.put("status", 200);
+                    }
+                }
+                //发送到本session的用户
+                this.getSession().getBasicRemote().sendText(sendResult.toString());
             } catch (IOException e) {
                 e.printStackTrace();
             }

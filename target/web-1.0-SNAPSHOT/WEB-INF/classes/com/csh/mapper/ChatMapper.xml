@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csh.mapper.ChatMapper">
+
+    <!--查询该会话中未读的消息数量-->
+    <select id="getChatLogUnRead" resultType="Integer">
+        select count(*) from esjy.chatlog where chatId = #{chatId} and read_status = 0;
+    </select>
+    <!--结果集映射，将查询的结果对应到pojo类对象中-->
+    <resultMap id="getChatList" type="ChatItem">
+        <id property="chatId" column="chatId"></id>
+        <association property="userA" javaType="User" column=" uno = userAId"
+                     select="com.csh.mapper.UserMapper.selectUserByUno"></association>
+        <association property="userB" javaType="User" column="uno = userBId"
+                     select="com.csh.mapper.UserMapper.selectUserByUno"></association>
+        <association property="unReadCount" javaType="Integer" column="chatId" select="com.csh.mapper.ChatMapper.getChatLogUnRead"></association>
+    </resultMap>
+    <!--获得聊天列表，按会话的最后一次聊天时间排序，需要结果映射-->
+    <select id="getChatListByUserId" resultMap="getChatList">
+        select chatId, userAId, userBId from esjy.chat where userAId = #{userId} or userBId = #{userId} order by lastChatTime desc;
+    </select>
+
+    <!--通过两个聊天人的id获得会话id-->
+    <select id="getChatIdByBothUser" parameterType="String" resultType="Integer">
+        select chatId from esjy.chat where (userAId = #{userAId} and userBId = #{userBId}) or (userAId = #{userBId} and userBId = #{userAId});
+    </select>
+
+    <!--插入会话两者的id-->
+    <insert id="insertChatting">
+        insert into esjy.chat(userAId, userBId) VALUES (#{userAId}, #{userBId});
+    </insert>
+
+    <!--修改某会话的最后的会话时间-->
+    <update id="updateLastChatTime">
+        update esjy.chat set lastChatTime = (select sendTime from esjy.chatlog where logId = #{logId}) where chatId = #{chatId};
+    </update>
+
+    <!--
+        The content of element type "resultMap" must match
+         "(constructor?,id*,result*,association*,collection*,discriminator?)".
+        造成的原因是<resultMap>标签中，需要按照
+            <id>
+            <result>
+            <association>
+            <collection>
+    -->
+    <!--历史聊天记录的结果集映射-->
+    <resultMap id="getChatLog" type="ChatHistory">
+        <id property="logId" column="logId"></id>
+        <result property="content" column="content"></result>
+        <result property="sendTime" column="sendTime" javaType="java.sql.Timestamp"></result>
+        <result property="chatId" column="chatId"></result>
+        <result property="read_status" column="read_status"></result>
+        <association property="sendUser" column="uno = sendUser" javaType="User"
+                     select="com.csh.mapper.UserMapper.selectUserByUno"></association>
+        <association property="recipient" column="uno = recipient" javaType="User"
+                     select="com.csh.mapper.UserMapper.selectUserByUno"></association>
+    </resultMap>
+    <!--获得某个会话的历史聊天记录-->
+    <select id="getChatHistoryListByChatId" resultMap="getChatLog">
+        select logId, content, sendUser, sendTime, recipient, chatId, read_status
+        from esjy.chatlog where chatId = #{chatId};
+    </select>
+    <!--获得某个会话的历史聊天记录的分页查询-->
+    <select id="getChatHistoryListByChatIdAndPaging" resultMap="getChatLog">
+        select logId, content, sendUser, sendTime, recipient, chatId, read_status
+        from esjy.chatlog
+        where chatId = #{chatId}
+        order by logId desc
+        limit #{start}, 10;
+    </select>
+
+    <!--插入会话记录
+    得到主键的外层写法没什么特别，跟普通的insert一样。只不过里面加了selectKey-->
+    <insert id="insertChatLog" parameterType="ChatHistory">
+        <!--selectKey  会将 SELECT LAST_INSERT_ID()的结果放入到传入的model的主键里面，
+                    keyProperty 对应的model中的主键的属性名，跟数据库的主键对应
+                    order AFTER 表示 SELECT LAST_INSERT_ID() 在insert执行之后执行,多用与自增主键，
+                          BEFORE 表示 SELECT LAST_INSERT_ID() 在insert执行之前执行，这样的话就拿不到主键了，
+                                这种适合那种主键不是自增的类型
+                    resultType 主键类型 -->
+        <selectKey keyProperty="logId" order="AFTER" resultType="int">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        insert into esjy.chatlog(content, sendUser, recipient, chatId)
+        VALUES (#{content}, #{sendUser.uno}, #{recipient.uno}, #{chatId});
+    </insert>
+
+    <!--修改会话记录的已读状态-->
+    <update id="readChatHistory">
+        update esjy.chatlog set read_status = 1 where chatId = #{chatId};
+    </update>
+
+</mapper>

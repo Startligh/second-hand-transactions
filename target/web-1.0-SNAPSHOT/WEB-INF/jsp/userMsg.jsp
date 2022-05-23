@@ -156,7 +156,17 @@
 <script type="text/javascript">
     function chat() {
         sessionStorage.setItem("chatWith", $("#userMsg_id").val());
-        $(location).attr("href","${pageContext.request.contextPath}/messageCenter");
+        $.ajax({
+            url : "${pageContext.request.contextPath}/addChatToUser",
+            data: {"chatTo":$("#userMsg_id").val()},
+            method:'post',
+            contentType:'application/json',
+            dataType:"json",
+            success : function(result) {
+            }
+        });
+        $(location).attr("href", "${pageContext.request.contextPath}/messageCenter");//jQuery页面跳转
+        //window.open("${pageContext.request.contextPath}/messageCenter"); //打开新标签页
     }
 </script>
 
